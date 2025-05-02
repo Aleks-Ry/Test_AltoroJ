@@ -20,6 +20,7 @@ package com.ibm.security.appscan.altoromutual.util;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -214,10 +215,12 @@ public class DBUtil {
 			return false; 
 		
 		Connection connection = getConnection();
-		Statement statement = connection.createStatement();
+		PreparedStatement statement = connection.prepareStatement("SELECT COUNT(*)FROM PEOPLE WHERE USER_ID = ? AND PASSWORD=?");
 		
-		ResultSet resultSet =statement.executeQuery("SELECT COUNT(*)FROM PEOPLE WHERE USER_ID = '"+ user +"' AND PASSWORD='" + password + "'"); /* BAD - user input should always be sanitized */
+		statement.setString(1, user);
 		
+		statement.setString(2, password);
+		ResultSet resultSet =statement.executeQuery();
 		if (resultSet.next()){
 			
 				if (resultSet.getInt(1) > 0)
@@ -238,12 +241,14 @@ public class DBUtil {
 			return null; 
 		
 		Connection connection = getConnection();
-		Statement statement = connection.createStatement();
-		ResultSet resultSet =statement.executeQuery("SELECT FIRST_NAME,LAST_NAME,ROLE FROM PEOPLE WHERE USER_ID = '"+ username +"' "); /* BAD - user input should always be sanitized */
+		PreparedStatement statement = connection.prepareStatement("SELECT FIRST_NAME,LAST_NAME,ROLE FROM PEOPLE WHERE USER_ID = ? ");
+		statement.setString(1, username);
 
+		ResultSet resultSet =statement.executeQuery();
 		String firstName = null;
 		String lastName = null;
 		String roleString = null;
+		
 		if (resultSet.next()){
 			firstName = resultSet.getString("FIRST_NAME");
 			lastName = resultSet.getString("LAST_NAME");
@@ -257,7 +262,6 @@ public class DBUtil {
 		
 		if (roleString.equalsIgnoreCase("admin"))
 			user.setRole(Role.Admin);
-		
 		return user;
 	}
 
@@ -272,10 +276,12 @@ public class DBUtil {
 			return null; 
 		
 		Connection connection = getConnection();
-		Statement statement = connection.createStatement();
-		ResultSet resultSet =statement.executeQuery("SELECT ACCOUNT_ID, ACCOUNT_NAME, BALANCE FROM ACCOUNTS WHERE USERID = '"+ username +"' "); /* BAD - user input should always be sanitized */
+		PreparedStatement statement = connection.prepareStatement("SELECT ACCOUNT_ID, ACCOUNT_NAME, BALANCE FROM ACCOUNTS WHERE USERID = ? ");
+		statement.setString(1, username);
 
+		ResultSet resultSet =statement.executeQuery();
 		ArrayList<Account> accounts = new ArrayList<Account>(3);
+		
 		while (resultSet.next()){
 			long accountId = resultSet.getLong("ACCOUNT_ID");
 			String name = resultSet.getString("ACCOUNT_NAME");
@@ -283,7 +289,6 @@ public class DBUtil {
 			Account newAccount = new Account(accountId, name, balance);
 			accounts.add(newAccount);
 		}
-		
 		return accounts.toArray(new Account[accounts.size()]);
 	}
 
@@ -467,8 +472,10 @@ public class DBUtil {
 	public static String addAccount(String username, String acctType) {
 		try {
 			Connection connection = getConnection();
-			Statement statement = connection.createStatement();
-			statement.execute("INSERT INTO ACCOUNTS (USERID,ACCOUNT_NAME,BALANCE) VALUES ('"+username+"','"+acctType+"', 0)");
+			PreparedStatement statement = connection.prepareStatement("INSERT INTO ACCOUNTS (USERID,ACCOUNT_NAME,BALANCE) VALUES (?,?, 0)");
+			statement.setString(1, username);
+			statement.setString(2, acctType);
+			statement.execute();
 			return null;
 		} catch (SQLException e){
 			return e.toString();
@@ -490,8 +497,12 @@ public class DBUtil {
 	public static String addUser(String username, String password, String firstname, String lastname) {
 		try {
 			Connection connection = getConnection();
-			Statement statement = connection.createStatement();
-			statement.execute("INSERT INTO PEOPLE (USER_ID,PASSWORD,FIRST_NAME,LAST_NAME,ROLE) VALUES ('"+username+"','"+password+"', '"+firstname+"', '"+lastname+"','user')");
+			PreparedStatement statement = connection.prepareStatement("INSERT INTO PEOPLE (USER_ID,PASSWORD,FIRST_NAME,LAST_NAME,ROLE) VALUES (?,?, ?, ?,'user')");
+			statement.setString(1, username);
+			statement.setString(2, password);
+			statement.setString(3, firstname);
+			statement.setString(4, lastname);
+			statement.execute();
 			return null;
 		} catch (SQLException e){
 			return e.toString();
@@ -502,8 +513,10 @@ public class DBUtil {
 	public static String changePassword(String username, String password) {
 		try {
 			Connection connection = getConnection();
-			Statement statement = connection.createStatement();
-			statement.execute("UPDATE PEOPLE SET PASSWORD = '"+ password +"' WHERE USER_ID = '"+username+"'");
+			PreparedStatement statement = connection.prepareStatement("UPDATE PEOPLE SET PASSWORD = ? WHERE USER_ID = ?");
+			statement.setString(1, password);
+			statement.setString(2, username);
+			statement.execute();
 			return null;
 		} catch (SQLException e){
 			return e.toString();
